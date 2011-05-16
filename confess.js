@@ -57,6 +57,7 @@ var confess = {
             properties = [
                 'background-image',
                 'list-style-image',
+                'src'   // This is for custom css rule like @font-face{ src: url(...)}
             ],
 
             resources = {},
@@ -77,8 +78,26 @@ var confess = {
                 if (!rule['style']) { return; }
                 foreach (properties, function(property) {
                     var value = rule.style.getPropertyCSSValue(property);
-                    if (value && value.primitiveType == CSSPrimitiveValue.CSS_URI) {
-                        this.tallyResource(resources, value.getStringValue(), baseScheme);
+                    if (value) {
+                        switch (value.cssValueType) {
+                            case CSSValue.CSS_PRIMITIVE_VALUE:   // 1
+                                if (value && value.primitiveType === CSSPrimitiveValue.CSS_URI) {
+                                    this.tallyResource(resources, value.getStringValue(), baseScheme);
+                                }
+                            break;
+                            case CSSValue.CSS_VALUE_LIST:        // 2
+                                var v = phantom.utils.parseUrl(value.cssText);
+                                this.tallyResource(resources, v, baseScheme);
+
+                                // Maybe we could break here but just to be sure let's go through all the CSSValueList array
+                                foreach (value, function(cssValue) {
+                                    if (cssValue && cssValue.cssValueType === CSSValue.CSS_CUSTOM) {
+                                        var v = phantom.utils.parseUrl(cssValue.cssText);
+                                        this.tallyResource(resources, v, baseScheme);
+                                    }
+                                }, this);
+                            break;
+                        }
                     }
                 }, this);
             }, this);
@@ -132,6 +151,15 @@ phantom.utils = {
             return true;
         });
         return (a > phantom.args.length);
+    },
+
+    parseUrl: function (url){
+        var re = /(?:^url\s*\(\'*)([^\']+\'*)\)/;
+        if (re.test(url)) {
+            m = url.match(re);
+            return m[1];
+        }
+        return null;
     },
 
     foreach: function (collection, callback, scope) {
