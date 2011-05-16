@@ -154,7 +154,14 @@ phantom.utils = {
     },
 
     parseUrl: function (url){
-        var re = /(?:^url\s*\(\'*)([^\']+\'*)\)/;
+        /*
+        Will parse any of the following:
+        url('http://html.net/font/letter_gothic_std_bold-webfont.ttf');
+         url("/font/letter_gothic_std_bold-webfont.ttf");
+        url(html.net/font/letter_gothic_std_bold-webfont.ttf);
+         url ( html.net/font/letter_gothic_std_bold-webfont.ttf ) 
+        */
+        var re = /url\W*\(\s*(.?)([\-\/\?\&a-zA-Z0-9_.,%:]+)\1\s*\)/;
         if (re.test(url)) {
             m = url.match(re);
             return m[1];
