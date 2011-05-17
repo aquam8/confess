@@ -86,16 +86,20 @@ var confess = {
                                 }
                             break;
                             case CSSValue.CSS_VALUE_LIST:        // 2
-                                var v = phantom.utils.parseUrl(value.cssText);
-                                this.tallyResource(resources, v, baseScheme);
+                                var self = this;
+                                phantom.utils.parseSources(value.cssText, function(url) {
+                                    self.tallyResource(resources, url, baseScheme);
+                                });
 
                                 // Maybe we could break here but just to be sure let's go through all the CSSValueList array
                                 foreach (value, function(cssValue) {
                                     if (cssValue && cssValue.cssValueType === CSSValue.CSS_CUSTOM) {
-                                        var v = phantom.utils.parseUrl(cssValue.cssText);
-                                        this.tallyResource(resources, v, baseScheme);
+                                        phantom.utils.parseSources(value.cssText, function(url) {
+                                            self.tallyResource(resources, url, baseScheme);
+                                        });
                                     }
                                 }, this);
+
                             break;
                         }
                     }
@@ -157,16 +161,25 @@ phantom.utils = {
         /*
         Will parse any of the following:
         url('http://html.net/font/letter_gothic_std_bold-webfont.ttf');
-         url("/font/letter_gothic_std_bold-webfont.ttf");
+         local("letter gothic std bold webfont.ttf");
         url(html.net/font/letter_gothic_std_bold-webfont.ttf);
          url ( html.net/font/letter_gothic_std_bold-webfont.ttf ) 
         */
-        var re = /url\W*\(\s*(.?)([\-\/\?\&a-zA-Z0-9_.,%:]+)\1\s*\)/;
+        var re = /(?:url|local)\W*\(\s*(.?)([\-\/\?\&a-zA-Z0-9_.: ]+)\1\s*\)/;
         if (re.test(url)) {
             m = url.match(re);
-            return m[1];
+            return m[2];
         }
         return null;
+    },
+
+    parseSources: function(sourcesText, callback, scope) {
+        var sources = sourcesText.split(',');
+        var self = this;
+        this.foreach(sources, function(source) {
+            var url = self.parseUrl(source);
+            callback.apply(scope, [url]);
+        });
     },
 
     foreach: function (collection, callback, scope) {
